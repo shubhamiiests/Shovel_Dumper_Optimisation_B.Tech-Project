@@ -3,7 +3,12 @@ analysis/graphs.py — All matplotlib/seaborn plotting functions
 """
 from __future__ import annotations
 import matplotlib
-matplotlib.use("TkAgg")
+import os as _os
+if not _os.environ.get("MPLBACKEND"):
+    try:
+        matplotlib.use("TkAgg")
+    except Exception:
+        matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import seaborn as sns

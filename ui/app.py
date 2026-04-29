@@ -8,9 +8,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
+
 import threading
+import subprocess
+import json
 import pandas as pd
-from typing import Optional, Dict, Any, List
+
 
 from core.models import FleetInputs
 from core.engine import solve
@@ -184,6 +187,22 @@ class FleetApp(tk.Tk):
             self.reg_tab.refresh_ids()
         elif tab == 3:
             self.graph_tab.refresh()
+
+    @staticmethod
+    def spawn_plot(*plot_args, subset_df=None):
+        runner = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "fleet_opt",
+            "plot_runner.py"
+        )
+        env = os.environ.copy()
+        if subset_df is not None:
+            env["FLEET_SUBSET"] = subset_df.to_json()
+        subprocess.Popen(
+            [sys.executable, runner] + [str(a) for a in plot_args],
+            env=env,
+            start_new_session=True,
+        )
 
 
 # ─────────────────────────── Data Entry Tab ───────────────────────────
@@ -812,13 +831,10 @@ class RegressionTab(tk.Frame):
         if not self._last_result:
             messagebox.showwarning("No result", "Run regression first.")
             return
-        x_col = self._get_x_col()
-        y_col = self._get_y_col()
-        threading.Thread(
-            target=scatter_with_regression,
-            args=(self._last_df, x_col, y_col, self._last_result),
-            daemon=True
-        ).start()
+        x_col  = self._get_x_col()
+        y_col  = self._get_y_col()
+        degree = int(self._deg_var.get())
+        FleetApp.spawn_plot("reg_plot", x_col, y_col, degree, subset_df=self._last_df)
 
 
 # ─────────────────────────── Graphs Tab ───────────────────────────────
@@ -927,63 +943,45 @@ class GraphsTab(tk.Frame):
         return None
 
     def _plot_dashboard(self):
-        df = read_dataframe()
-        if df.empty:
-            messagebox.showwarning("No data", "No records to plot.")
-            return
-        threading.Thread(target=production_dashboard, args=(df,), daemon=True).start()
+        if read_dataframe().empty:
+            messagebox.showwarning("No data", "No records to plot."); return
+        FleetApp.spawn_plot("dashboard")
 
     def _plot_haul(self):
-        df = read_dataframe()
-        if df.empty:
-            messagebox.showwarning("No data", "No records to plot.")
-            return
-        threading.Thread(target=haul_distance_analysis, args=(df,), daemon=True).start()
+        if read_dataframe().empty:
+            messagebox.showwarning("No data", "No records to plot."); return
+        FleetApp.spawn_plot("haul")
 
     def _plot_prod_vs(self):
-        df = read_dataframe()
-        if df.empty:
-            messagebox.showwarning("No data", "No records to plot.")
-            return
-        threading.Thread(target=productivity_vs_production, args=(df,), daemon=True).start()
+        if read_dataframe().empty:
+            messagebox.showwarning("No data", "No records to plot."); return
+        FleetApp.spawn_plot("prod_vs")
 
     def _plot_corr(self):
-        df = read_dataframe()
-        if df.empty:
-            messagebox.showwarning("No data", "No records to plot.")
-            return
-        threading.Thread(target=correlation_heatmap, args=(df,), daemon=True).start()
+        if read_dataframe().empty:
+            messagebox.showwarning("No data", "No records to plot."); return
+        FleetApp.spawn_plot("corr")
 
     def _plot_custom(self):
         x_col = self._get_col(self._cx_var)
         y_col = self._get_col(self._cy_var)
         if not x_col or not y_col:
-            messagebox.showerror("Error", "Select both X and Y axes.")
-            return
-        df = read_dataframe()
-        if df.empty:
-            messagebox.showwarning("No data", "No records to plot.")
-            return
+            messagebox.showerror("Error", "Select both X and Y axes."); return
+        if read_dataframe().empty:
+            messagebox.showwarning("No data", "No records to plot."); return
 
         color_raw = self._color_var.get()
-        color_col = None
+        color_col = "none"
         if color_raw and color_raw != "(none)" and "[" in color_raw:
             color_col = color_raw.split("[")[-1].rstrip("]")
 
         ctype = self._chart_type.get()
-
-        def _do():
-            if ctype == "Bar Chart":
-                bar_chart(df, x_col, y_col)
-            elif ctype == "Scatter + Regression":
-                reg = run_regression(df, x_col, y_col, degree=1)
-                scatter_with_regression(df, x_col, y_col,
-                                        reg_result=reg if "error" not in reg else None,
-                                        color_col=color_col)
-            else:
-                scatter_with_regression(df, x_col, y_col, color_col=color_col)
-
-        threading.Thread(target=_do, daemon=True).start()
+        if ctype == "Bar Chart":
+            FleetApp.spawn_plot("bar", x_col, y_col)
+        elif ctype == "Scatter + Regression":
+            FleetApp.spawn_plot("scatter", x_col, y_col, 1, color_col)
+        else:
+            FleetApp.spawn_plot("scatter", x_col, y_col, 0, color_col)
 
 
 # ─────────────────────────── Entry point ─────────────────────────────
