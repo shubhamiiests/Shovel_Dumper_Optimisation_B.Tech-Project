@@ -147,3 +147,21 @@ def multi_regression_report(
         "n": len(y),
         "model": model,
     }
+def auto_best_degree(
+    df: pd.DataFrame,
+    x_col: str,
+    y_col: str,
+    max_degree: int = 3,
+) -> Dict[str, Any]:
+    """
+    Fit degree 1, 2, 3 and return the result with highest Adjusted R².
+    Falls back to degree 1 if not enough data.
+    """
+    best = None
+    for deg in range(1, max_degree + 1):
+        res = run_regression(df, x_col, y_col, degree=deg)
+        if "error" in res:
+            continue
+        if best is None or res["adj_r2"] > best["adj_r2"]:
+            best = res
+    return best if best else {"error": "Not enough data"}

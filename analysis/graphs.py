@@ -199,14 +199,17 @@ def production_dashboard(df: pd.DataFrame):
             ax.set_title(ttl, fontsize=8)
             continue
 
-        c = accent_cycle[row * 3 + col % 3]
+        c = accent_cycle[(row * 3 + col) % len(accent_cycle)]
         if kind == "scatter":
             ax.scatter(sub[xcol], sub[ycol], color=c, s=40, alpha=0.85, edgecolors="none")
             # Trend line
-            if len(sub) >= 2:
-                m, b, *_ = np.polyfit(sub[xcol], sub[ycol], 1), 0
-                xs = np.linspace(sub[xcol].min(), sub[xcol].max(), 100)
-                ax.plot(xs, np.polyval(m, xs), color=PALETTE["accent4"], lw=1.2, alpha=0.7)
+            if len(sub) >= 3:
+                try:
+                    z = np.polyfit(sub[xcol], sub[ycol], 2)
+                    xs = np.linspace(sub[xcol].min(), sub[xcol].max(), 200)
+                    ax.plot(xs, np.polyval(z, xs), color=PALETTE["accent4"], lw=1.8, alpha=0.85)
+                except Exception:
+                    pass
         else:
             grp = sub.groupby(xcol)[ycol].mean().reset_index()
             ax.bar(grp[xcol].astype(str), grp[ycol], color=c, alpha=0.85, width=0.55)
@@ -295,7 +298,7 @@ def productivity_vs_production(df: pd.DataFrame):
                color=PALETTE["accent2"], s=70, zorder=3, edgecolors="none", alpha=0.9)
     if len(sub) >= 2:
         z = np.polyfit(sub["tph_per_shovel"], sub["tph_total"], 1)
-        xs = np.linspace(sub["tph_per_shovel"].min(), sub["tph_per_shovel"].max(), 100)
+        xs = np.linspace(sub["tph_per_shovel"].min(), sub["tph_per_shovel"].max(), 200)
         ax.plot(xs, np.polyval(z, xs), PALETTE["accent1"], lw=2)
     ax.set_xlabel("Productivity per Shovel (t/h)", color=PALETTE["text"])
     ax.set_ylabel("Total Fleet Production (t/h)", color=PALETTE["text"])
@@ -305,10 +308,13 @@ def productivity_vs_production(df: pd.DataFrame):
     ax = axes[1]
     ax.scatter(sub["tph_total"], sub["production_per_shift_t"],
                color=PALETTE["accent3"], s=70, zorder=3, edgecolors="none", alpha=0.9)
-    if len(sub) >= 2:
-        z = np.polyfit(sub["tph_total"], sub["production_per_shift_t"], 1)
-        xs = np.linspace(sub["tph_total"].min(), sub["tph_total"].max(), 100)
-        ax.plot(xs, np.polyval(z, xs), PALETTE["accent4"], lw=2)
+    if len(sub) >= 3:
+        try:
+            z = np.polyfit(sub["tph_total"], sub["production_per_shift_t"], 2)
+            xs = np.linspace(sub["tph_total"].min(), sub["tph_total"].max(), 200)
+            ax.plot(xs, np.polyval(z, xs), PALETTE["accent4"], lw=2)
+        except Exception:
+            pass
     ax.set_xlabel("Total Fleet Production (t/h)", color=PALETTE["text"])
     ax.set_ylabel("Production per Shift (t)", color=PALETTE["text"])
     ax.set_title("Fleet Rate → Shift Production", color=PALETTE["text"], fontsize=10)

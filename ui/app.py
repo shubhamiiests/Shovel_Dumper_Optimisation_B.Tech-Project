@@ -911,6 +911,17 @@ class GraphsTab(tk.Frame):
         _combo(row, ["Scatter + Regression", "Bar Chart", "Scatter (no regression)"],
                textvariable=self._chart_type, width=24).pack(side="left", padx=4)
 
+        # Regression degree
+        row = _frame(parent)
+        row.pack(fill="x", pady=4)
+        _label(row, "Reg. degree:", width=12, anchor="w").pack(side="left")
+        self._custom_degree = tk.StringVar(value="Auto  (picks best fit)")
+        _combo(row, ["Auto  (picks best fit)", "1  (Linear — straight)", "2  (Quadratic — 1 curve)", "3  (Cubic — S-curve)"],
+               textvariable=self._custom_degree, width=30).pack(side="left", padx=4)
+        _label(row, "  Auto = best fit, 1=line, 2=curve, 3=S-curve",
+               fg=SUBTEXT, font=FONT_SMALL).pack(side="left")
+
+
         # Colour-by
         row = _frame(parent)
         row.pack(fill="x", pady=4)
@@ -976,10 +987,13 @@ class GraphsTab(tk.Frame):
             color_col = color_raw.split("[")[-1].rstrip("]")
 
         ctype = self._chart_type.get()
+        degree_raw = self._custom_degree.get().split()[0]
+        degree = -1 if degree_raw == "Auto" else int(degree_raw)
+
         if ctype == "Bar Chart":
             FleetApp.spawn_plot("bar", x_col, y_col)
         elif ctype == "Scatter + Regression":
-            FleetApp.spawn_plot("scatter", x_col, y_col, 1, color_col)
+            FleetApp.spawn_plot("scatter", x_col, y_col, degree, color_col)
         else:
             FleetApp.spawn_plot("scatter", x_col, y_col, 0, color_col)
 
